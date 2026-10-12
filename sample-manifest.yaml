@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-webapp
+  namespace: default
+  labels:
+    app: demo-webapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-webapp
+  template:
+    metadata:
+      labels:
+        app: demo-webapp
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-webapp-svc
+  namespace: default
+  labels:
+    app: demo-webapp
+spec:
+  type: ClusterIP
+  selector:
+    app: demo-webapp
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP

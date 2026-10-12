@@ -1,0 +1,105 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: akit-ops-sa
+  namespace: default
+
+---
+# Role permissions scoped to target namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: akit-ops-role
+  namespace: default
+rules:
+  # Permissions for core Kubernetes Services
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - patch
+  # Permissions for apps/v1 Deployments
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: akit-ops-rolebinding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: akit-ops-role
+subjects:
+  - kind: ServiceAccount
+    name: akit-ops-sa
+    namespace: default
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: akit-ops-lite
+  namespace: default
+  labels:
+    app: akit-ops-lite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: akit-ops-lite
+  template:
+    metadata:
+      labels:
+        app: akit-ops-lite
+    spec:
+      serviceAccountName: akit-ops-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: akit-ops-lite
+          image: akit-ops-lite:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REPO_URL
+              value: "https://github.com/your-username/k8s-manifests.git"
+            - name: REPO_PULL_INTERVAL
+              value: "30s"
+            - name: MANIFEST_FILE
+              value: "manifest.yaml"
+            - name: K8S_NAMESPACE
+              value: "default"
+            - name: DRY_RUN
+              value: "false"
+          resources:
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
